@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>地震學導論 - 互動學習系統</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- 資料區 (13個主題內容) ---
+    const topicsData = [
+      {
+        id: 1,
+        title: "一、地震學導論",
+        icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
+        qna: [
+          {
+            q: "什麼是地震學？它的研究範圍包含哪些？",
+            a: "地震學 (Seismology) 是研究固體地球中「彈性波」或「聲波」的科學。我們的研究範圍不僅僅是地震本身，還包括利用這些波來探測地球內部的構造，甚至監測核爆。"
+          },
+          {
+            q: "為什麼我們要學習地震學？",
+            a: "把地球想像成一位巨大的病人，而地震學家就是醫生。我們無法切開地球來看（目前人類鑽探最深只有約12公里，相較於地球半徑6371公里微不足道），所以我們利用地震波當作「地球的X光或MRI」，來了解它的健康狀況與內部結構。這對於防災、尋找資源都至關重要！"
+          }
+        ],
+        animationType: "none",
+        metaphor: "💡 教授的比喻：地震波就像是地球的「X光片」，讓我們不需切開地球就能看透它的內在。"
+      },
+      {
+        id: 2,
+        title: "二、地震與社會",
+        icon: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 14v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+        qna: [
+          {
+            q: "地震對我們人類文明有什麼影響？",
+            a: "地震能在一瞬間改變地貌，摧毀基礎建設。歷史上許多文明的興衰都與自然災害有關。例如，環太平洋火山地震帶聚集了全球約80%的地震，而這裡也居住著龐大的人口，這使得地震風險與人口分布息息相關。"
+          },
+          {
+            q: "除了搖晃，地震還會帶來什麼衝擊？",
+            a: "除了直接的房屋倒塌，地震還會引發「次生災害」，像是海嘯、山崩、火災與土壤液化。例如1906年舊金山大地震，真正造成毀滅性打擊的是震後引發的大火。"
+          }
+        ],
+        animationType: "none",
+        metaphor: "🌍 教授的提醒：災害 = 危害度 (Hazard) × 暴露度 (Exposure) × 脆弱度 (Vulnerability)。地震本身是自然現象，當它發生在人口密集且脆弱的都市時，才會變成「災難」。"
+      },
+      {
+        id: 3,
+        title: "三、地球內部結構",
+        icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+        qna: [
+          {
+            q: "地球內部到底長什麼樣子？",
+            a: "地球是由不同層次組成的，主要分為：地殼（最外層的薄殼）、地函（佔體積最大的中間層）、地核（高溫高壓的中心，分為液態外核與固態內核）。"
+          },
+          {
+            q: "岩石圈與軟流圈又是什麼？",
+            a: "這是另一種分類法！「岩石圈」包含了地殼和最上層冷而硬的地函，它們就像一塊塊拼圖（板塊）。而「軟流圈」是岩石圈下方、溫度較高、帶有塑性（像麥芽糖般可緩慢流動）的地函部分，板塊就是在軟流圈上滑動的。"
+          }
+        ],
+        animationType: "earthStructure",
+        metaphor: "🥚 教授的比喻：地球就像一顆「半熟水煮蛋」！蛋殼是「地殼」（薄且脆），蛋白是「地函」（固態但高溫下有塑性），蛋黃則是「地核」（外層液態、內層固態）。"
+      },
+      {
+        id: 4,
+        title: "四、板塊構造理論",
+        icon: "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7",
+        qna: [
+          {
+            q: "板塊邊界有哪幾種？",
+            a: "主要有三種：\n1. 聚合型（互相擠壓，如喜馬拉雅山或台灣，常有逆斷層）。\n2. 張裂型（互相拉開，如中洋脊，常有正斷層）。\n3. 轉形型（互相摩擦錯動，如美國聖安地列斯斷層，常有走滑斷層）。"
+          },
+          {
+            q: "斷層是怎麼產生的？",
+            a: "當板塊運動產生的壓力超過了岩石能承受的極限，岩石就會破裂並發生相對位移，這條破裂面就是「斷層」。絕大多數的地震都發生在板塊邊界上的斷層帶。"
+          }
+        ],
+        animationType: "faults",
+        metaphor: "🍪 教授的比喻：想像把一片餅乾用力折彎，剛開始它會彎曲（彈性變形），當力量大到餅乾承受不住時，就會「啪」一聲斷裂，掉出碎屑（釋放能量，也就是地震）。"
+      },
+      {
+        id: 5,
+        title: "五、地震波",
+        icon: "M2 12h4l2-9 4 18 2-9h4",
+        qna: [
+          {
+            q: "什麼是 P波和 S波？",
+            a: "P波（Primary Wave，縱波）是傳播最快的波，介質震動方向與波前進方向「平行」；S波（Secondary Wave，橫波）傳播較慢，介質震動方向與波前進方向「垂直」。"
+          },
+          {
+            q: "為什麼地震來時，通常先上下跳，再左右搖？",
+            a: "因為 P波速度快，會先到達地表，造成上下震動；接著破壞力較強、振幅較大的 S波和表面波才會到達，造成猛烈的水平搖晃。"
+          }
+        ],
+        animationType: "seismicWaves",
+        metaphor: "〰️ 教授的比喻：P波就像你推拉一條「彈簧」，一疏一密地傳遞；S波就像你上下甩動一條「繩子」，產生波浪狀的起伏。特別注意，S波無法穿過液體（就像繩子在水裡甩不起來），這讓我們證實了地球的「外核是液態的」！"
+      },
+      {
+        id: 6,
+        title: "六、地震測量與儀器",
+        icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+        qna: [
+          {
+            q: "地震儀是怎麼運作的？",
+            a: "早期的地震儀利用「慣性」原理。懸掛一個重物，當大地震動時，重物因為慣性保持靜止，而連接在地上的紀錄紙跟著震動，筆就能畫出地震波形（Seismogram）。現代則利用電磁感應來精確紀錄微小震動。"
+          },
+          {
+            q: "我們怎麼知道地震在哪裡發生？",
+            a: "利用「三角定位法」。因為 P波跑得比 S波快，我們可以測量兩者到達同一個測站的「時間差」。時間差越大，代表距離震央越遠。畫出三個以上測站的距離圓圈，交集點就是震央！"
+          }
+        ],
+        animationType: "none",
+        metaphor: "📐 教授的比喻：就像你看到閃電（P波）後，過了幾秒才聽到雷聲（S波）。間隔時間越長，代表雷擊發生的地方離你越遠！"
+      },
+      {
+        id: 7,
+        title: "七、地震規模與震度",
+        icon: "M22 12h-4l-3 9L9 3l-3 9H2",
+        qna: [
+          {
+            q: "規模 (Magnitude) 和震度 (Intensity) 有什麼不一樣？",
+            a: "「規模」是地震釋放出來的總能量大小，一個地震只有一個規模數值（如芮氏規模、矩震級）。\n「震度」則是各地感受到的搖晃程度，距離震央越近通常震度越大，一個地震在各地會有不同的震度。"
+          },
+          {
+            q: "規模差 1，能量差多少？",
+            a: "地震規模是對數刻度。規模每增加 1.0，釋放的能量大約會增加 32 倍！規模增加 2.0，能量就增加了約 1000 倍（32 × 32）。"
+          }
+        ],
+        animationType: "none",
+        metaphor: "💡 教授的比喻：把地震想像成一顆「燈泡」。「規模」是燈泡的瓦數（例如100瓦），是固定的；「震度」是你在房間不同角落感受到的「亮度」，離燈泡越近就越亮。"
+      },
+      {
+        id: 8,
+        title: "八、地震成因與機制",
+        icon: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z",
+        qna: [
+          {
+            q: "什麼是彈性回復理論 (Elastic Rebound Theory)？",
+            a: "這是解釋地震成因最經典的理論。地殼岩石受到板塊擠壓或拉扯時會累積「應變」（變形）。當累積的「應力」超過岩石摩擦力與強度時，斷層就會突然滑動錯開，釋放能量，然後岩石彈回（回彈）到新的無應力狀態。"
+          },
+          {
+            q: "地震會不斷循環發生嗎？",
+            a: "是的，這稱為「地震循環」。累積應力 ➔ 破裂引發地震 ➔ 應力釋放 ➔ 再次開始累積應力。這就是為什麼特定斷層帶每隔幾十年或幾百年就會發生大地震的原因。"
+          }
+        ],
+        animationType: "elasticRebound",
+        metaphor: "📏 教授的比喻：拿一把塑膠尺，兩端用力彎曲（累積應變）。當你手一滑，尺會瞬間彈回原本筆直的狀態（彈性回復），並發出「啪」的聲響與震動（地震）。"
+      },
+      {
+        id: 9,
+        title: "九、地震危害類型",
+        icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+        qna: [
+          {
+            q: "除了房子倒塌，還有哪些可怕的危害？",
+            a: "強烈震動會引發許多複合性災害。如果在山區，可能引發大規模「山崩與地滑」；如果發生在海底錯動，可能會掀起「海嘯」；在含水量高的沙質地層，則可能發生「土壤液化」。"
+          },
+          {
+            q: "什麼是土壤液化？",
+            a: "當強烈搖晃使得富含水分的鬆散沙土失去承載力，沙土與水混合變得像液體一樣泥濘。這會導致地表上的建築物下沉、傾斜，地下管線破裂浮出。"
+          }
+        ],
+        animationType: "none",
+        metaphor: "🏖️ 教授的比喻：土壤液化就像你去海邊沙灘，站在濕潤的沙子上快速跺腳，原本堅硬的沙子會突然湧出水分，變成爛泥，你的腳就會陷下去！"
+      },
+      {
+        id: 10,
+        title: "十、地震風險評估",
+        icon: "M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+        qna: [
+          {
+            q: "地震可以準確「預測」(Prediction) 嗎？",
+            a: "目前科學界「無法」準確預測地震發生的確切時間、地點與精確規模。我們主要依靠「機率預報」(Forecasting)，例如預估某斷層在未來50年內發生規模7以上地震的機率。"
+          },
+          {
+            q: "什麼是長期與短期預測？",
+            a: "長期預測是基於歷史地震與地質活動速率，評估未來幾十年的風險，對建築法規制定很有用。短期預測（幾天或幾小時前）目前仍被認為不可行，容易引發無謂恐慌或「狼來了」效應。"
+          }
+        ],
+        animationType: "none",
+        metaphor: "🎲 教授的比喻：預測地震就像猜測一顆骰子什麼時候會連續擲出三次6。你無法知道確切是哪一次，但你可以計算出它的機率，並為此買好保險。"
+      },
+      {
+        id: 11,
+        title: "十一、防災工程與建築設計",
+        icon: "M3 21h18M5 21V7l8-4 8 4v14M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4",
+        qna: [
+          {
+            q: "建築物如何對抗地震？",
+            a: "主要有幾種策略：\n1. 耐震：增加柱子、梁的粗細與鋼筋量，讓房子「硬抗」。\n2. 減震（阻尼器）：在建築內加裝像避震器一樣的裝置（如台北101的阻尼球），吸收搖晃能量。\n3. 隔震：在建築物底部加裝橡膠墊，阻斷地震波向往上傳遞。"
+          },
+          {
+            q: "舊房子怎麼辦？可以補強嗎？",
+            a: "可以的！常見的「結構補強技術」包括擴柱（把柱子加粗）、加裝剪力牆，或是使用碳纖維包覆柱子，增加其韌性，避免在地震中脆性破壞。"
+          }
+        ],
+        animationType: "none",
+        metaphor: "🚗 教授的比喻：抗震設計就像汽車的安全系統。「耐震」是堅固的車殼；「減震阻尼器」是汽車的避震彈簧；而「隔震墊」則像是在平滑冰面上溜冰，底盤在動但車身很穩。"
+      },
+      {
+        id: 12,
+        title: "十二、地震監測與預警系統",
+        icon: "M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01",
+        qna: [
+          {
+            q: "地震預警 (Early Warning) 和地震預測一樣嗎？",
+            a: "完全不同！預警是「地震已經發生了」，儀器偵測到跑得快但破壞力小的 P波，利用通訊網路（電波速度接近光速）搶先在破壞力強的 S波到達前，發送手機警報給民眾，爭取數秒到數十秒的避難時間。"
+          },
+          {
+            q: "幾秒鐘的預警時間能做什麼？",
+            a: "非常有用！你可以做到「趴下、掩護、穩住」。同時，自動化系統可以讓行駛中的高鐵減速、電梯停在最近樓層開門、瓦斯管線自動關閉，大幅減少重大災情。"
+          }
+        ],
+        animationType: "none",
+        metaphor: "🏃‍♂️ 教授的比喻：這就像賽跑。地震波是跑者，電訊號是光速飛機。當發生地震（起跑），飛機瞬間飛到終點通知大家：「跑者（S波搖晃）還有10秒抵達，快準備！」"
+      },
+      {
+        id: 13,
+        title: "十三、重大地震案例探討",
+        icon: "M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z",
+        qna: [
+          {
+            q: "我們可以從過去的重大地震中學到什麼？",
+            a: "每次大地震都是血淋淋的教訓。例如：1999年台灣 921 集集大地震，讓我們發現車籠埔斷層的威力，隨後大幅修正了建築耐震規範；2011年日本 311 東日本大震災，則讓我們重新檢視海嘯防護與核電廠的安全標準。"
+          },
+          {
+            q: "為什麼有時候規模較小的地震，死傷反而更慘重？",
+            a: "這與「震源深度」及「人口密集度」有關。2010年海地地震規模 7.0，卻造成數十萬人死亡，因為震源極淺、就在首都下方，且當地建築極度脆弱。反觀智利常有規模8以上的深層地震，因為建築防震好，死傷相對極少。"
+          }
+        ],
+        animationType: "none",
+        metaphor: "📖 教授的結語：歷史不只是一堆數據，它是大自然給我們的考卷。學習地震學，就是為了在下一次大自然「隨堂測驗」時，我們能交出安全的答卷！"
+      }
+    ];
+
+    // --- 元件：SVG 動畫展示區 ---
+    const AnimationDisplay = ({ type }) => {
+      if (type === "earthStructure") {
+        return (
+          <div className="w-full flex justify-center py-6">
+            <svg width="250" height="250" viewBox="0 0 200 200" className="animate-spin-slow">
+              {/* Earth Core */}
+              <circle cx="100" cy="100" r="25" fill="#fcd34d" stroke="#f59e0b" strokeWidth="2" />
+              <text x="100" y="105" fontSize="10" textAnchor="middle" fill="#78350f" fontWeight="bold">地核</text>
+              
+              {/* Earth Mantle */}
+              <circle cx="100" cy="100" r="60" fill="transparent" stroke="#f97316" strokeWidth="30" opacity="0.8" />
+              <text x="100" y="55" fontSize="12" textAnchor="middle" fill="#fff" fontWeight="bold">地函</text>
+              
+              {/* Earth Crust */}
+              <circle cx="100" cy="100" r="76" fill="transparent" stroke="#4ade80" strokeWidth="4" />
+              <text x="100" y="18" fontSize="12" textAnchor="middle" fill="#14532d" fontWeight="bold">地殼</text>
+            </svg>
+          </div>
+        );
+      }
+
+      if (type === "seismicWaves") {
+        return (
+          <div className="w-full flex flex-col items-center py-6 space-y-6">
+            <div className="w-full max-w-sm">
+              <p className="text-sm font-bold text-blue-700 mb-2">P波 (縱波) - 介質水平壓縮與膨脹</p>
+              <div className="flex justify-between items-center w-full h-8 overflow-hidden">
+                {[...Array(20)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="w-3 h-3 bg-blue-500 rounded-full animate-pulse" 
+                    style={{ animationDelay: `${i * 0.1}s`, animationDuration: '1s' }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="w-full max-w-sm">
+              <p className="text-sm font-bold text-red-700 mb-2">S波 (橫波) - 介質上下震動</p>
+              <div className="flex justify-between items-center w-full h-16">
+                {[...Array(20)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="w-3 h-3 bg-red-500 rounded-full" 
+                    style={{ 
+                      transform: `translateY(${Math.sin((i / 20) * Math.PI * 4) * 15}px)`,
+                      animation: 'wave 1.5s infinite linear',
+                      animationDelay: `${i * 0.1}s`
+                    }}
+                  />
+                ))}
+              </div>
+              <style>{`
+                @keyframes wave {
+                  0%, 100% { transform: translateY(0px); }
+                  50% { transform: translateY(-15px); }
+                }
+              `}</style>
+            </div>
+          </div>
+        );
+      }
+
+      if (type === "faults") {
+        return (
+          <div className="w-full flex justify-around py-6 text-center text-sm font-bold text-gray-700">
+            <div>
+              <p className="mb-2 text-white">正斷層 (拉張)</p>
+              <svg width="80" height="80" viewBox="0 0 100 100">
+                <polygon points="10,40 50,40 50,90 10,90" fill="#cbd5e1" stroke="#475569" />
+                <polygon points="52,50 90,50 90,100 52,100" fill="#94a3b8" stroke="#475569" className="animate-bounce" style={{animationDuration: '3s'}}/>
+                <path d="M 5,65 L -5,65 M 95,75 L 105,75" stroke="red" strokeWidth="3" markerEnd="url(#arrow)" />
+              </svg>
+            </div>
+            <div>
+              <p className="mb-2 text-white">逆斷層 (擠壓)</p>
+              <svg width="80" height="80" viewBox="0 0 100 100">
+                <polygon points="10,50 50,50 50,100 10,100" fill="#cbd5e1" stroke="#475569" />
+                <polygon points="48,40 90,40 90,90 48,90" fill="#94a3b8" stroke="#475569" className="animate-bounce" style={{animationDuration: '3s', animationDirection: 'reverse'}}/>
+                <path d="M -5,75 L 5,75 M 105,65 L 95,65" stroke="red" strokeWidth="3" markerEnd="url(#arrow)" />
+              </svg>
+            </div>
+          </div>
+        );
+      }
+
+      if (type === "elasticRebound") {
+        return (
+          <div className="w-full flex justify-center py-6 overflow-hidden">
+            <svg width="300" height="150" viewBox="0 0 300 150">
+              <defs>
+                <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                  <path d="M0,0 L0,6 L9,3 z" fill="#ef4444" />
+                </marker>
+              </defs>
+              <g className="animate-slide-left">
+                <rect x="10" y="20" width="130" height="100" fill="#d1d5db" stroke="#374151" strokeWidth="2" />
+                <path d="M 75,70 L 75,30" stroke="#ef4444" strokeWidth="4" markerEnd="url(#arrow)" />
+              </g>
+              <g className="animate-slide-right">
+                <rect x="150" y="20" width="130" height="100" fill="#9ca3af" stroke="#374151" strokeWidth="2" />
+                <path d="M 215,70 L 215,110" stroke="#ef4444" strokeWidth="4" markerEnd="url(#arrow)" />
+              </g>
+              <line x1="145" y1="10" x2="145" y2="130" stroke="#ef4444" strokeWidth="3" strokeDasharray="5,5" />
+              <text x="145" y="145" fontSize="12" textAnchor="middle" fill="#ef4444">斷層線</text>
+            </svg>
+            <style>{`
+              .animate-slide-left {
+                animation: slideLeft 4s infinite;
+              }
+              .animate-slide-right {
+                animation: slideRight 4s infinite;
+              }
+              @keyframes slideLeft {
+                0% { transform: translateY(0) skewY(0); }
+                40% { transform: translateY(0) skewY(-5deg); fill: #fca5a5; }
+                45% { transform: translateY(-15px) skewY(0); }
+                100% { transform: translateY(-15px); }
+              }
+              @keyframes slideRight {
+                0% { transform: translateY(0) skewY(0); }
+                40% { transform: translateY(0) skewY(-5deg); fill: #fca5a5; }
+                45% { transform: translateY(15px) skewY(0); }
+                100% { transform: translateY(15px); }
+              }
+            `}</style>
+          </div>
+        );
+      }
+
+      return null;
+    };
+
+    // --- 主應用程式 ---
+    function App() {
+      const [activeTopicId, setActiveTopicId] = useState(1);
+      const [showFeedback, setShowFeedback] = useState(false);
+
+      const activeTopic = topicsData.find(t => t.id === activeTopicId);
+
+      useEffect(() => {
+        setShowFeedback(false);
+      }, [activeTopicId]);
+
+      return (
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col md:flex-row">
+          
+          <aside className="w-full md:w-1/4 bg-slate-900 text-white shadow-xl z-10 flex flex-col md:h-screen sticky top-0 md:overflow-y-auto">
+            <div className="p-6 bg-slate-950">
+              <h1 className="text-2xl font-bold flex items-center gap-2 text-blue-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-8 h-8">
+                  <path d="M2 12h4l2-9 4 18 2-9h4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                地震學第一章
+              </h1>
+              <p className="text-sm text-slate-400 mt-2">大師級深度導航系統</p>
+            </div>
+            <nav className="flex-1 px-4 py-4 space-y-1">
+              {topicsData.map((topic) => (
+                <button
+                  key={topic.id}
+                  onClick={() => setActiveTopicId(topic.id)}
+                  className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 flex items-center gap-3 ${
+                    activeTopicId === topic.id 
+                      ? "bg-blue-600 text-white shadow-md font-medium" 
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  <div className="w-6 flex justify-center">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                      <path d={topic.icon} />
+                    </svg>
+                  </div>
+                  <span className="text-sm truncate">{topic.title}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
+
+          <main className="flex-1 p-6 md:p-10 md:h-screen md:overflow-y-auto bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50">
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+              
+              <header className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200">
+                <h2 className="text-3xl font-extrabold text-slate-800 mb-4">{activeTopic.title}</h2>
+                <div className="w-16 h-1.5 bg-blue-500 rounded-full mb-6"></div>
+                <p className="text-slate-600 text-lg leading-relaxed">
+                  各位同學好，我是你們的地震學大師！讓我們一起用最輕鬆的方式，來探索這個主題吧。
+                </p>
+              </header>
+
+              <div className="grid gap-6">
+                {activeTopic.qna.map((item, index) => (
+                  <div key={index} className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-400"></div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-start gap-2">
+                      <span className="text-blue-500 shrink-0">Q:</span> 
+                      {item.q}
+                    </h3>
+                    <div className="text-slate-600 leading-relaxed pl-6 whitespace-pre-line">
+                      <span className="font-bold text-slate-400 absolute left-6">A: </span>
+                      <span className="pl-6 block">{item.a}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {activeTopic.animationType !== "none" && (
+                <div className="bg-slate-800 rounded-xl p-6 shadow-lg text-white">
+                  <h4 className="text-center font-bold text-slate-300 mb-2">🔭 科學視覺化圖解</h4>
+                  <AnimationDisplay type={activeTopic.animationType} />
+                </div>
+              )}
+
+              <div className="bg-amber-50 rounded-xl p-6 border border-amber-200 shadow-sm text-amber-900 text-lg">
+                {activeTopic.metaphor}
+              </div>
+
+              <div className="mt-12 bg-blue-50 rounded-xl p-8 border-2 border-dashed border-blue-200 text-center">
+                <h3 className="text-xl font-bold text-blue-900 mb-4">教授的課堂隨堂考 🤔</h3>
+                <p className="text-blue-800 mb-6">
+                  關於這部分的解釋，你聽得懂嗎？或者你有什麼大膽的假設性問題想問嗎？（例如：如果地球是空心的會怎樣？）
+                </p>
+                
+                {!showFeedback ? (
+                  <div className="flex justify-center gap-4">
+                    <button 
+                      onClick={() => setShowFeedback(true)}
+                      className="px-6 py-2 bg-blue-600 text-white font-medium rounded-full hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                      完全懂了！教授講得真好
+                    </button>
+                    <button 
+                      onClick={() => setShowFeedback(true)}
+                      className="px-6 py-2 bg-white text-blue-600 font-medium rounded-full hover:bg-blue-50 transition-colors border border-blue-200 shadow-sm"
+                    >
+                      我還有點疑惑...
+                    </button>
+                  </div>
+                ) : (
+                  <div className="animate-fade-in text-emerald-700 font-bold bg-emerald-100 py-3 px-6 rounded-lg inline-block">
+                    太棒了！科學的進步就是源於不斷的提問與思考。保持這份好奇心，我們繼續進入下一章吧！🎓
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-between items-center pt-8 border-t border-slate-200">
+                <button 
+                  onClick={() => setActiveTopicId(Math.max(1, activeTopicId - 1))}
+                  disabled={activeTopicId === 1}
+                  className="px-4 py-2 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  ← 上一章
+                </button>
+                <span className="text-slate-400 text-sm">
+                  章節 {activeTopicId} / {topicsData.length}
+                </span>
+                <button 
+                  onClick={() => setActiveTopicId(Math.min(topicsData.length, activeTopicId + 1))}
+                  disabled={activeTopicId === topicsData.length}
+                  className="px-4 py-2 text-blue-600 font-medium hover:text-blue-800 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  下一章 →
+                </button>
+              </div>
+
+            </div>
+          </main>
+          
+          <style>{`
+            .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+            .animate-spin-slow { animation: spin 20s linear infinite; }
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      );
+    }
+
+    // 渲染應用程式
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
