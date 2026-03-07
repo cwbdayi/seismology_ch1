@@ -20,32 +20,40 @@ jobs:
       - name: 🦞 Install OpenClaw
         run: npm install -g openclaw@latest
 
-      - name: 🚀 Start OpenClaw Gateway (Background)
+      - name: 🚀 Configure & Start OpenClaw Gateway (Background)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # 這裡帶入你的專屬登入密碼
-          OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_TOKEN }}
         run: |
-          # 🔥 建立設定檔，將 allowedOrigins 設為星號以允許所有網域連線 (解決 CORS 錯誤)
+          # 建立設定檔目錄
           mkdir -p ~/.openclaw
-          echo '{"gateway": {"controlUi": {"allowedOrigins": ["*"]}}}' > ~/.openclaw/openclaw.json
           
-          # 啟動 Gateway，帶入 --allow-unconfigured 參數
+          # 🔥 終極殺手鐧：直接把密碼跟白名單寫死進大腦設定檔裡！
+          cat <<EOF > ~/.openclaw/openclaw.json
+          {
+            "gateway": {
+              "auth": {
+                "token": "${{ secrets.OPENCLAW_TOKEN }}"
+              },
+              "controlUi": {
+                "allowedOrigins": ["*"]
+              }
+            }
+          }
+          EOF
+          
+          # 啟動 Gateway (保留 --allow-unconfigured 以防它抱怨缺少其他預設值)
           openclaw gateway run --port 8000 --allow-unconfigured &
           sleep 5
 
       - name: 🌐 Install & Start Cloudflare Quick Tunnel
         run: |
-          # 1. 安裝 Cloudflare
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           
-          # 2. 啟動 tunnel，並將所有輸出導向 tunnel.log
           cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 &
           
           echo "等待 Cloudflare 生成網址..."
           
-          # 3. 寫一個迴圈，最多等 60 秒 (每 2 秒檢查一次) 抓取網址
           for i in {1..30}; do
             CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
             
@@ -64,78 +72,9 @@ jobs:
             exit 1
           fi
           
-          # 4. 印出最終專屬連結
           echo "========================================="
-          echo "🚀 成功啦！請複製下方網址："
-          echo "👉 $CF_URL 👈"
-          echo "========================================="
-
-      - name: ⏱️ Keep Alive for 1 Hour
-        run: |
-          echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
-          sleep 3540
-          # 啟動 tunnel，並將所有輸出導向 tunnel.log
-          cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 &
-          
-          echo "等待 Cloudflare 生成網址..."
-          
-          # 寫一個迴圈，最多等 60 秒 (每 2 秒檢查一次)
-          for i in {1..30}; do
-            # 嘗試從 log 中抓出 .trycloudflare.com 的網址
-            CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
-            
-            if [ ! -z "$CF_URL" ]; then
-              echo "找到網址了！"
-              break
-            fi
-            
-            echo "還沒生成，繼續等... (嘗試次數: $i/30)"
-            sleep 2
-          done
-          
-          if [ -z "$CF_URL" ]; then
-            echo "❌ 錯誤：等了 60 秒還是抓不到網址，請檢查 Cloudflare 服務是否正常。"
-            # 印出 log 幫助我們除錯
-            cat tunnel.log
-            exit 1
-          fi
-          
-          echo "========================================="
-          echo "🚀 成功啦！請複製下方網址："
-          echo "👉 $CF_URL 👈"
-          echo "========================================="
-
-      - name: ⏱️ Keep Alive for 1 Hour
-        run: |
-          echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
-          sleep 3540
-          
-          echo "等待 Cloudflare 生成網址..."
-          
-          # 寫一個迴圈，最多等 60 秒 (每 2 秒檢查一次)
-          for i in {1..30}; do
-            # 嘗試從 log 中抓出 .trycloudflare.com 的網址
-            CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
-            
-            if [ ! -z "$CF_URL" ]; then
-              echo "找到網址了！"
-              break
-            fi
-            
-            echo "還沒生成，繼續等... (嘗試次數: $i/30)"
-            sleep 2
-          done
-          
-          if [ -z "$CF_URL" ]; then
-            echo "❌ 錯誤：等了 60 秒還是抓不到網址，請檢查 Cloudflare 服務是否正常。"
-            # 印出 log 幫助我們除錯
-            cat tunnel.log
-            exit 1
-          fi
-          
-          echo "========================================="
-          echo "🚀 成功啦！請複製下方網址："
-          echo "👉 $CF_URL 👈"
+          echo "🚀 成功啦！請複製下方「已經合體完成」的終極網址："
+          echo "👉 ${CF_URL}/#token=${{ secrets.OPENCLAW_TOKEN }} 👈"
           echo "========================================="
 
       - name: ⏱️ Keep Alive for 1 Hour
