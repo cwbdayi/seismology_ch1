@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: 📥 Checkout
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
       - name: ⚙️ Setup Node.js
@@ -25,6 +25,7 @@ jobs:
       - name: ⚙️ Configure OpenClaw Gateway
         run: |
           mkdir -p ~/.openclaw
+
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -35,25 +36,21 @@ jobs:
                 "allowedOrigins": ["*"],
                 "dangerouslyDisableDeviceAuth": true
               }
+            },
+            "model": {
+              "provider": "openai",
+              "model": "minimax/minimax-m2.5",
+              "baseUrl": "https://openrouter.ai/api/v1",
+              "apiKeyEnv": "OPENROUTER_API_KEY"
             }
           }
           EOF
 
-      - name: 🚀 Setup OpenRouter Agent & Start Gateway
+      - name: 🚀 Start OpenClaw Gateway
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          # 刪掉舊 agent（防止找 anthropic）
-          openclaw agents remove main || true
-
-          # 建立新的 OpenRouter agent profile
-          openclaw agents add openrouter \
-            --provider openai \
-            --model minimax/minimax-m2.5 \
-            --base-url https://openrouter.ai/api/v1 \
-            --api-key $OPENROUTER_API_KEY
-
-          # 啟動 OpenClaw Gateway
+          echo "Starting OpenClaw Gateway..."
           openclaw gateway run --port 8000 --allow-unconfigured > gateway.log 2>&1 &
           echo $! > gateway.pid
 
