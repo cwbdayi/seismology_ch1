@@ -1,4 +1,4 @@
-name: 🦞 OpenClaw 1-Hour Shift (OpenRouter Edition)
+name: 🦞 OpenClaw 1-Hour Shift (Manual Auth Edition)
 
 on:
   workflow_dispatch: 
@@ -21,13 +21,11 @@ jobs:
         run: npm install -g openclaw@latest
 
       - name: 🚀 Configure & Start OpenClaw Gateway (Background)
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           # 建立設定檔與大腦目錄
           mkdir -p ~/.openclaw/agents/main/agent
           
-          # 1. Gateway 登入設定與白名單
+          # 1. Gateway 登入與安全設定 (解決 CORS 與跳過裝置配對)
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -42,24 +40,15 @@ jobs:
           }
           EOF
           
-          # 2. 🔥 核心解法：直接建立 Agent 設定檔，從出廠就洗腦它是 MiniMax！
+          # 2. Agent 預設模型設定 (洗腦它預設使用 OpenRouter/MiniMax)
           cat <<EOF > ~/.openclaw/agents/main/agent/agent.json
           {
             "model": "openrouter/minimax/minimax-m2.5"
           }
           EOF
           
-          # 3. 寫入 OpenRouter 的專屬金鑰 (這次連假的 Anthropic 都不用塞了)
-          cat <<EOF > ~/.openclaw/agents/main/agent/auth-profiles.json
-          {
-            "openrouter": {
-              "apiKey": "${{ secrets.OPENROUTER_API_KEY }}"
-            }
-          }
-          EOF
-          
-          # 啟動 Gateway (加上環境變數雙重保險)
-          OPENCLAW_MODEL="openrouter/minimax/minimax-m2.5" openclaw gateway run --port 8000 --allow-unconfigured &
+          # 啟動 Gateway (不帶任何 API Key 環境變數，保持乾淨)
+          openclaw gateway run --port 8000 --allow-unconfigured &
           sleep 5
 
       - name: 🌐 Install & Start Cloudflare Quick Tunnel
