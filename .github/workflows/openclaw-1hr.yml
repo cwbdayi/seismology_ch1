@@ -25,7 +25,6 @@ jobs:
       - name: ⚙️ Configure OpenClaw Gateway
         run: |
           mkdir -p ~/.openclaw
-
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -36,25 +35,27 @@ jobs:
                 "allowedOrigins": ["*"],
                 "dangerouslyDisableDeviceAuth": true
               }
-            },
-            "model": {
-              "provider": "openai",
-              "model": "minimax/minimax-m2.5",
-              "baseUrl": "https://openrouter.ai/api/v1",
-              "apiKeyEnv": "OPENROUTER_API_KEY"
             }
           }
           EOF
 
-      - name: 🚀 Start OpenClaw Gateway
+      - name: 🚀 Setup OpenRouter Agent & Start Gateway
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "Starting OpenClaw Gateway..."
+          # 建立 agent profile
+          openclaw agents add openrouter \
+            --profile openrouter \
+            --api-key $OPENROUTER_API_KEY \
+            --provider openai \
+            --model minimax/minimax-m2.5 \
+            --base-url https://openrouter.ai/api/v1
+
+          # 啟動 gateway
           openclaw gateway run --port 8000 --allow-unconfigured > gateway.log 2>&1 &
           echo $! > gateway.pid
 
-          echo "Waiting for gateway..."
+          # 等待 gateway 啟動
           for i in {1..15}; do
             if nc -z localhost 8000; then
               echo "Gateway is ready!"
@@ -62,6 +63,7 @@ jobs:
             fi
             sleep 2
           done
+
           echo "Gateway started"
 
       - name: 🌐 Install Cloudflare Tunnel
@@ -71,57 +73,24 @@ jobs:
 
       - name: 🚇 Start Cloudflare Tunnel
         run: |
-          echo "Starting Cloudflare tunnel..."
           cloudflared tunnel --url http://localhost:8000 --no-autoupdate > tunnel.log 2>&1 &
-
-          echo "Waiting for tunnel URL..."
           for i in {1..40}; do
             CF_URL=$(grep -o 'https://[a-zA-Z0-9.-]*trycloudflare.com' tunnel.log | head -n 1)
-            if [ ! -z "$CF_URL" ]; then
-              echo "Tunnel ready!"
-              break
-            fi
+            if [ ! -z "$CF_URL" ]; then break; fi
             sleep 2
           done
-
-          if [ -z "$CF_URL" ]; then
-            echo "❌ Tunnel URL not found"
-            cat tunnel.log
-            exit 1
-          fi
+          if [ -z "$CF_URL" ]; then cat tunnel.log; exit 1; fi
           echo "TUNNEL_URL=$CF_URL" >> $GITHUB_ENV
 
       - name: 📢 Show Access Info
         run: |
-          echo "===================================="
-          echo "🚀 OpenClaw Agent Ready"
-          echo ""
-          echo "URL:"
-          echo "$TUNNEL_URL"
-          echo ""
-          echo "Token:"
-          echo "${{ secrets.OPENCLAW_TOKEN }}"
+          echo "OpenClaw Agent Ready"
+          echo "URL: $TUNNEL_URL"
+          echo "Token: ${{ secrets.OPENCLAW_TOKEN }}"
           echo "Model: minimax/minimax-m2.5 (via OpenRouter)"
-          echo "===================================="
-
-          echo "## 🦞 OpenClaw Cloud Agent" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**URL:** $TUNNEL_URL" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Token:** \`${{ secrets.OPENCLAW_TOKEN }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Model:** minimax/minimax-m2.5 (OpenRouter)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⏱ Agent will run for **1 hour**." >> $GITHUB_STEP_SUMMARY
-
-      - name: 🔍 Debug Gateway Logs
-        run: |
-          echo "===== Gateway Log ====="
-          cat gateway.log || true
 
       - name: ⏱ Keep Alive
         run: |
-          echo "Agent running..."
           for i in {1..59}; do
             echo "Minute $i / 59"
             sleep 60
