@@ -53,3 +53,22 @@ jobs:
         run: |
           echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
           sleep 3540
+          
+          # 給它多一點時間連線
+          sleep 15 
+          
+          # 從 metrics 服務中精準抓取 userHostname
+          export CF_URL=$(curl -s http://localhost:60123/quicktunnel | jq -r '.userHostname')
+          
+          # 加上 https:// 前綴
+          export FULL_URL="https://$CF_URL"
+          
+          echo "========================================="
+          echo "🚀 成功啦！請複製下方網址："
+          echo "👉 $FULL_URL 👈"
+          echo "========================================="
+
+      - name: ⏱️ Keep Alive for 1 Hour
+        run: |
+          echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
+          sleep 3540
