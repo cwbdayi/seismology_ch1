@@ -1,4 +1,4 @@
-name: 🦞 OpenClaw 1-Hour Shift (Cloudflare Edition)
+name: 🦞 OpenClaw 1-Hour Shift (OpenRouter Edition)
 
 on:
   workflow_dispatch: 
@@ -22,11 +22,14 @@ jobs:
 
       - name: 🚀 Configure & Start OpenClaw Gateway (Background)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 🔥 1. 換成 OpenRouter 的 API Key
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # 🔥 2. 強制指定 Agent 預設使用的模型
+          OPENCLAW_MODEL: openrouter/minimax/minimax-m2.5
         run: |
           mkdir -p ~/.openclaw
           
-          # 🔥 終極解法：加入 dangerouslyDisableDeviceAuth 來強制關閉控制面板的裝置配對要求
+          # 加入 dangerouslyDisableDeviceAuth 來強制關閉控制面板的裝置配對要求
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
