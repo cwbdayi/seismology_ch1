@@ -39,9 +39,6 @@ jobs:
               "auth": {
                 "token": "${{ secrets.OPENCLAW_TOKEN }}"
               },
-              "devicePairing": {
-                "enabled": false
-              },
               "controlUi": {
                 "allowedOrigins": ["*"]
               }
@@ -61,13 +58,14 @@ jobs:
 
           openclaw agents add openrouter \
             --profile openrouter \
-            --key $OPENROUTER_API_KEY \
             --model minimax/minimax-m2.5 || true
 
           echo "Current agents:"
           openclaw agents list || true
 
       - name: 🚀 Start Gateway
+        env:
+          OPENCLAW_TOKEN: ${{ secrets.OPENCLAW_TOKEN }}
         run: |
 
           openclaw gateway run \
@@ -166,3 +164,6 @@ jobs:
           done
 
           echo "Session finished"
+
+
+
