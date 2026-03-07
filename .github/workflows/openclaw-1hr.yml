@@ -24,16 +24,66 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # 建立設定檔目錄
           mkdir -p ~/.openclaw
           
-          # 🔥 終極殺手鐧：直接把密碼跟白名單寫死進大腦設定檔裡！
+          # 寫入設定檔 (密碼與允許所有網域)
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
               "auth": {
                 "token": "${{ secrets.OPENCLAW_TOKEN }}"
               },
+              "controlUi": {
+                "allowedOrigins": ["*"]
+              }
+            }
+          }
+          EOF
+          
+          openclaw gateway run --port 8000 --allow-unconfigured &
+          sleep 5
+
+      - name: 🌐 Install & Start Cloudflare Quick Tunnel
+        run: |
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+          
+          cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 &
+          
+          echo "等待 Cloudflare 生成網址..."
+          
+          for i in {1..30}; do
+            CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
+            
+            if [ ! -z "$CF_URL" ]; then
+              echo "找到網址了！"
+              break
+            fi
+            sleep 2
+          done
+          
+          if [ -z "$CF_URL" ]; then
+            echo "❌ 錯誤：等了 60 秒還是抓不到網址，請檢查 Cloudflare 服務是否正常。"
+            cat tunnel.log
+            exit 1
+          fi
+          
+          echo "========================================="
+          echo "🚀 成功啦！請複製下方網址 (密碼請輸入你設定的 Token)："
+          echo "👉 $CF_URL 👈"
+          echo "========================================="
+
+      - name: ⏱️ Keep Alive & Auto-Approve Loop
+        run: |
+          echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
+          echo "🟢 自動配對機器人已啟動！正在背景監聽配對請求..."
+          
+          # 執行 1200 次，每次等 3 秒 = 剛好卡住 1 小時
+          for i in {1..1200}; do
+            # 自動核准最新的配對請求，如果目前沒有請求則靜默略過
+            openclaw devices approve --latest >/dev/null 2>&1 || true
+            sleep 3
+          done
               "controlUi": {
                 "allowedOrigins": ["*"]
               }
