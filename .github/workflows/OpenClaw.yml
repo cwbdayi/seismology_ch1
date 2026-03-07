@@ -23,16 +23,11 @@ jobs:
       - name: 🚀 Configure & Start OpenClaw Gateway (Background)
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          # 🔥 塞一把假的 Anthropic 鑰匙在環境變數，堵住它的嘴
-          ANTHROPIC_API_KEY: "sk-ant-dummy-bypass-key-12345"
-          # 🔥 強制指定預設模型
-          OPENCLAW_MODEL: "openrouter/minimax/minimax-m2.5"
-          AGENT_MODEL: "openrouter/minimax/minimax-m2.5"
         run: |
           # 建立設定檔與大腦目錄
           mkdir -p ~/.openclaw/agents/main/agent
           
-          # 1. Gateway 登入設定
+          # 1. Gateway 登入設定與白名單
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -47,23 +42,24 @@ jobs:
           }
           EOF
           
-          # 2. 🔥 精準打擊：直接把 API Key 寫入它報錯的那個 JSON 檔案裡！
+          # 2. 🔥 核心解法：直接建立 Agent 設定檔，從出廠就洗腦它是 MiniMax！
+          cat <<EOF > ~/.openclaw/agents/main/agent/agent.json
+          {
+            "model": "openrouter/minimax/minimax-m2.5"
+          }
+          EOF
+          
+          # 3. 寫入 OpenRouter 的專屬金鑰 (這次連假的 Anthropic 都不用塞了)
           cat <<EOF > ~/.openclaw/agents/main/agent/auth-profiles.json
           {
             "openrouter": {
               "apiKey": "${{ secrets.OPENROUTER_API_KEY }}"
-            },
-            "anthropic": {
-              "apiKey": "sk-ant-dummy-bypass-key-12345"
             }
           }
           EOF
           
-          # 買個保險，在根目錄也複製一份
-          cp ~/.openclaw/agents/main/agent/auth-profiles.json ~/.openclaw/auth-profiles.json
-          
-          # 啟動 Gateway
-          openclaw gateway run --port 8000 --allow-unconfigured &
+          # 啟動 Gateway (加上環境變數雙重保險)
+          OPENCLAW_MODEL="openrouter/minimax/minimax-m2.5" openclaw gateway run --port 8000 --allow-unconfigured &
           sleep 5
 
       - name: 🌐 Install & Start Cloudflare Quick Tunnel
@@ -85,7 +81,7 @@ jobs:
           done
           
           if [ -z "$CF_URL" ]; then
-            echo "❌ 錯誤：等了 60 秒還是抓不到網址，請檢查 Cloudflare。"
+            echo "❌ 錯誤：等了 60 秒還是抓不到網址，請檢查 Cloudflare 服務是否正常。"
             cat tunnel.log
             exit 1
           fi
