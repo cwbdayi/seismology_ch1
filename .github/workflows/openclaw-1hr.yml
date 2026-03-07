@@ -32,40 +32,35 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           
-          # 🔥 改變策略：我們強制將 metrics (包含網址) 寫入 metrics.txt
-          cloudflared tunnel --url http://localhost:8000 --metrics localhost:60123 > tunnel.log 2>&1 &
+          # 啟動 tunnel，並將所有輸出導向 tunnel.log
+          cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 &
           
-          # 給它多一點時間連線
-          sleep 15 
+          echo "等待 Cloudflare 生成網址..."
           
-          # 從 metrics 服務中精準抓取 userHostname
-          export CF_URL=$(curl -s http://localhost:60123/quicktunnel | jq -r '.userHostname')
+          # 寫一個迴圈，最多等 60 秒 (每 2 秒檢查一次)
+          for i in {1..30}; do
+            # 嘗試從 log 中抓出 .trycloudflare.com 的網址
+            CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
+            
+            if [ ! -z "$CF_URL" ]; then
+              echo "找到網址了！"
+              break
+            fi
+            
+            echo "還沒生成，繼續等... (嘗試次數: $i/30)"
+            sleep 2
+          done
           
-          # 加上 https:// 前綴
-          export FULL_URL="https://$CF_URL"
-          
-          echo "========================================="
-          echo "🚀 成功啦！請複製下方網址："
-          echo "👉 $FULL_URL 👈"
-          echo "========================================="
-
-      - name: ⏱️ Keep Alive for 1 Hour
-        run: |
-          echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
-          sleep 3540
-          
-          # 給它多一點時間連線
-          sleep 15 
-          
-          # 從 metrics 服務中精準抓取 userHostname
-          export CF_URL=$(curl -s http://localhost:60123/quicktunnel | jq -r '.userHostname')
-          
-          # 加上 https:// 前綴
-          export FULL_URL="https://$CF_URL"
+          if [ -z "$CF_URL" ]; then
+            echo "❌ 錯誤：等了 60 秒還是抓不到網址，請檢查 Cloudflare 服務是否正常。"
+            # 印出 log 幫助我們除錯
+            cat tunnel.log
+            exit 1
+          fi
           
           echo "========================================="
           echo "🚀 成功啦！請複製下方網址："
-          echo "👉 $FULL_URL 👈"
+          echo "👉 $CF_URL 👈"
           echo "========================================="
 
       - name: ⏱️ Keep Alive for 1 Hour
