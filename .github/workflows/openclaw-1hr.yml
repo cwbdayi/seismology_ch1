@@ -39,6 +39,17 @@ jobs:
           }
           EOF
 
+      - name: ⚙️ Configure OpenClaw Auth Profiles (OpenRouter)
+        run: |
+          mkdir -p ~/.openclaw/agents/main/agent
+          cat <<EOF > ~/.openclaw/agents/main/agent/auth-profiles.json
+          {
+            "openrouter": {
+              "apiKey": "${{ secrets.OPENROUTER_API_KEY }}"
+            }
+          }
+          EOF
+
       - name: 🚀 Start OpenClaw Gateway
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
