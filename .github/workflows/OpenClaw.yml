@@ -9,10 +9,11 @@ jobs:
     timeout-minutes: 60
 
     steps:
+
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js
+      - name: ⚙️ Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -20,11 +21,12 @@ jobs:
       - name: 📦 Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y netcat-openbsd jq
+          sudo apt-get install -y netcat-openbsd jq curl
 
       - name: 🦞 Install OpenClaw
         run: |
           npm install -g openclaw@latest
+          echo "OpenClaw version:"
           openclaw --version
 
       - name: ⚙️ Configure OpenClaw
@@ -44,24 +46,37 @@ jobs:
           }
           EOF
 
+          echo "Config:"
+          cat ~/.openclaw/openclaw.json
+
       - name: 🤖 Setup OpenRouter Agent
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
+
+          echo "Registering OpenRouter agent..."
+
           openclaw agents add openrouter \
             --profile openrouter \
-            --provider openrouter \
-            --api-key $OPENROUTER_API_KEY \
-            --model minimax/minimax-m2.5
+            --key $OPENROUTER_API_KEY \
+            --model minimax/minimax-m2.5 || true
 
-      - name: 🚀 Start OpenClaw Gateway
+          echo "Current agents:"
+          openclaw agents list || true
+
+      - name: 🚀 Start Gateway
         run: |
-          openclaw gateway run --port 8000 --allow-unconfigured > gateway.log 2>&1 &
+
+          openclaw gateway run \
+            --port 8000 \
+            --allow-unconfigured \
+            > gateway.log 2>&1 &
+
           echo $! > gateway.pid
 
           echo "Waiting for gateway..."
 
-          for i in {1..20}; do
+          for i in {1..30}; do
             if nc -z localhost 8000; then
               echo "Gateway started"
               break
@@ -69,21 +84,34 @@ jobs:
             sleep 2
           done
 
+          if ! nc -z localhost 8000; then
+            echo "Gateway failed"
+            cat gateway.log
+            exit 1
+          fi
+
       - name: 🌐 Install Cloudflare Tunnel
         run: |
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
 
-      - name: 🚇 Start Cloudflare Tunnel
+      - name: 🚇 Start Tunnel
         run: |
-          cloudflared tunnel --url http://localhost:8000 --no-autoupdate > tunnel.log 2>&1 &
+
+          cloudflared tunnel \
+            --url http://localhost:8000 \
+            --no-autoupdate \
+            > tunnel.log 2>&1 &
 
           echo "Waiting for tunnel..."
 
-          for i in {1..40}; do
-            CF_URL=$(grep -o 'https://.*trycloudflare.com' tunnel.log | head -n 1)
+          for i in {1..60}; do
+
+            CF_URL=$(grep -o 'https://[-a-z0-9]*\.trycloudflare.com' tunnel.log | head -n 1)
 
             if [ ! -z "$CF_URL" ]; then
+              echo "Tunnel ready:"
+              echo $CF_URL
               break
             fi
 
@@ -100,28 +128,34 @@ jobs:
 
       - name: 📢 Show Access Info
         run: |
+
           echo "================================="
           echo "🦞 OpenClaw Cloud Agent Ready"
           echo "================================="
           echo ""
-          echo "🌐 Gateway URL:"
+          echo "🌐 Gateway:"
           echo "$TUNNEL_URL"
+          echo ""
+          echo "🖥 Control UI:"
+          echo "$TUNNEL_URL/ui"
+          echo ""
+          echo "📡 API:"
+          echo "$TUNNEL_URL/v1/chat/completions"
           echo ""
           echo "🔑 Token:"
           echo "${{ secrets.OPENCLAW_TOKEN }}"
           echo ""
           echo "🤖 Model:"
-          echo "minimax/minimax-m2.5 (via OpenRouter)"
-          echo ""
-          echo "🖥 Control UI:"
-          echo "$TUNNEL_URL/ui"
-          echo ""
-          echo "📡 API Endpoint:"
-          echo "$TUNNEL_URL/v1/chat/completions"
+          echo "minimax/minimax-m2.5"
           echo ""
           echo "================================="
 
-      - name: ⏱ Keep Alive (59 min)
+      - name: 🔍 Debug Logs
+        run: |
+          echo "------ Gateway Log ------"
+          cat gateway.log || true
+
+      - name: ⏱ Keep Alive
         run: |
           for i in {1..59}; do
             echo "Running minute $i / 59"
