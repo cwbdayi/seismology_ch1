@@ -23,6 +23,8 @@ jobs:
       - name: 🚀 Start OpenClaw Gateway (Background)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # 🔥 這裡加入了強制指定密碼的環境變數
+          OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_TOKEN }}
         run: |
           openclaw gateway run --port 8000 --allow-unconfigured &
           sleep 5
@@ -34,6 +36,39 @@ jobs:
           
           # 啟動 tunnel，並將所有輸出導向 tunnel.log
           cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 &
+          
+          echo "等待 Cloudflare 生成網址..."
+          
+          # 寫一個迴圈，最多等 60 秒 (每 2 秒檢查一次)
+          for i in {1..30}; do
+            # 嘗試從 log 中抓出 .trycloudflare.com 的網址
+            CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
+            
+            if [ ! -z "$CF_URL" ]; then
+              echo "找到網址了！"
+              break
+            fi
+            
+            echo "還沒生成，繼續等... (嘗試次數: $i/30)"
+            sleep 2
+          done
+          
+          if [ -z "$CF_URL" ]; then
+            echo "❌ 錯誤：等了 60 秒還是抓不到網址，請檢查 Cloudflare 服務是否正常。"
+            # 印出 log 幫助我們除錯
+            cat tunnel.log
+            exit 1
+          fi
+          
+          echo "========================================="
+          echo "🚀 成功啦！請複製下方網址："
+          echo "👉 $CF_URL 👈"
+          echo "========================================="
+
+      - name: ⏱️ Keep Alive for 1 Hour
+        run: |
+          echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
+          sleep 3540
           
           echo "等待 Cloudflare 生成網址..."
           
