@@ -32,18 +32,21 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           
-          cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 &
-          sleep 10 
+          # 🔥 改變策略：我們強制將 metrics (包含網址) 寫入 metrics.txt
+          cloudflared tunnel --url http://localhost:8000 --metrics localhost:60123 > tunnel.log 2>&1 &
           
-          export CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
+          # 給它多一點時間連線
+          sleep 15 
           
-          echo "### 🦞 你的太空龍蝦已經上線！" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 **專屬連結:** $CF_URL" >> $GITHUB_STEP_SUMMARY
+          # 從 metrics 服務中精準抓取 userHostname
+          export CF_URL=$(curl -s http://localhost:60123/quicktunnel | jq -r '.userHostname')
           
-          # 🔥 終極絕招：直接印在黑底白字的 Log 裡面！🔥
+          # 加上 https:// 前綴
+          export FULL_URL="https://$CF_URL"
+          
           echo "========================================="
           echo "🚀 成功啦！請複製下方網址："
-          echo "👉 $CF_URL 👈"
+          echo "👉 $FULL_URL 👈"
           echo "========================================="
 
       - name: ⏱️ Keep Alive for 1 Hour
