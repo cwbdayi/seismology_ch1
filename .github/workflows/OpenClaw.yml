@@ -1,4 +1,4 @@
-name: 🦞 OpenClaw Cloud Agent (OpenRouter)
+name: 🦞 OpenClaw Cloud Agent (OpenRouter Pro)
 
 on:
   workflow_dispatch:
@@ -17,14 +17,20 @@ jobs:
         with:
           node-version: 22
 
+      - name: 📦 Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y netcat jq
+
       - name: 🦞 Install OpenClaw
         run: |
           npm install -g openclaw@latest
           openclaw --version
 
-      - name: ⚙️ Configure OpenClaw Gateway
+      - name: ⚙️ Configure OpenClaw
         run: |
           mkdir -p ~/.openclaw
+
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -32,39 +38,36 @@ jobs:
                 "token": "${{ secrets.OPENCLAW_TOKEN }}"
               },
               "controlUi": {
-                "allowedOrigins": ["*"],
-                "dangerouslyDisableDeviceAuth": true
+                "allowedOrigins": ["*"]
               }
             }
           }
           EOF
 
-      - name: 🚀 Setup OpenRouter Agent & Start Gateway
+      - name: 🤖 Setup OpenRouter Agent
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          # 建立 agent profile
           openclaw agents add openrouter \
             --profile openrouter \
+            --provider openrouter \
             --api-key $OPENROUTER_API_KEY \
-            --provider openai \
-            --model minimax/minimax-m2.5 \
-            --base-url https://openrouter.ai/api/v1
+            --model minimax/minimax-m2.5
 
-          # 啟動 gateway
+      - name: 🚀 Start OpenClaw Gateway
+        run: |
           openclaw gateway run --port 8000 --allow-unconfigured > gateway.log 2>&1 &
           echo $! > gateway.pid
 
-          # 等待 gateway 啟動
-          for i in {1..15}; do
+          echo "Waiting for gateway..."
+
+          for i in {1..20}; do
             if nc -z localhost 8000; then
-              echo "Gateway is ready!"
+              echo "Gateway started"
               break
             fi
             sleep 2
           done
-
-          echo "Gateway started"
 
       - name: 🌐 Install Cloudflare Tunnel
         run: |
@@ -74,25 +77,55 @@ jobs:
       - name: 🚇 Start Cloudflare Tunnel
         run: |
           cloudflared tunnel --url http://localhost:8000 --no-autoupdate > tunnel.log 2>&1 &
+
+          echo "Waiting for tunnel..."
+
           for i in {1..40}; do
-            CF_URL=$(grep -o 'https://[a-zA-Z0-9.-]*trycloudflare.com' tunnel.log | head -n 1)
-            if [ ! -z "$CF_URL" ]; then break; fi
+            CF_URL=$(grep -o 'https://.*trycloudflare.com' tunnel.log | head -n 1)
+
+            if [ ! -z "$CF_URL" ]; then
+              break
+            fi
+
             sleep 2
           done
-          if [ -z "$CF_URL" ]; then cat tunnel.log; exit 1; fi
+
+          if [ -z "$CF_URL" ]; then
+            echo "Tunnel failed"
+            cat tunnel.log
+            exit 1
+          fi
+
           echo "TUNNEL_URL=$CF_URL" >> $GITHUB_ENV
 
       - name: 📢 Show Access Info
         run: |
-          echo "OpenClaw Agent Ready"
-          echo "URL: $TUNNEL_URL"
-          echo "Token: ${{ secrets.OPENCLAW_TOKEN }}"
-          echo "Model: minimax/minimax-m2.5 (via OpenRouter)"
+          echo "================================="
+          echo "🦞 OpenClaw Cloud Agent Ready"
+          echo "================================="
+          echo ""
+          echo "🌐 Gateway URL:"
+          echo "$TUNNEL_URL"
+          echo ""
+          echo "🔑 Token:"
+          echo "${{ secrets.OPENCLAW_TOKEN }}"
+          echo ""
+          echo "🤖 Model:"
+          echo "minimax/minimax-m2.5 (via OpenRouter)"
+          echo ""
+          echo "🖥 Control UI:"
+          echo "$TUNNEL_URL/ui"
+          echo ""
+          echo "📡 API Endpoint:"
+          echo "$TUNNEL_URL/v1/chat/completions"
+          echo ""
+          echo "================================="
 
-      - name: ⏱ Keep Alive
+      - name: ⏱ Keep Alive (59 min)
         run: |
           for i in {1..59}; do
-            echo "Minute $i / 59"
+            echo "Running minute $i / 59"
             sleep 60
           done
+
           echo "Session finished"
