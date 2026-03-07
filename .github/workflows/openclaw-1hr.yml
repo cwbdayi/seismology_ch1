@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: 📥 Checkout repository
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
       - name: ⚙️ Setup Node.js
@@ -39,23 +39,15 @@ jobs:
           }
           EOF
 
-      - name: 🚀 Setup OpenRouter Agent & Start Gateway
+      - name: 🚀 Start OpenClaw Gateway
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          # 建立 agent profile
-          openclaw agents add openrouter \
-            --profile openrouter \
-            --api-key $OPENROUTER_API_KEY \
-            --provider openai \
-            --model minimax/minimax-m2.5 \
-            --base-url https://openrouter.ai/api/v1
-
-          # 啟動 gateway
+          echo "Starting OpenClaw Gateway..."
           openclaw gateway run --port 8000 --allow-unconfigured > gateway.log 2>&1 &
           echo $! > gateway.pid
 
-          # 等待 gateway 啟動
+          echo "Waiting for gateway..."
           for i in {1..15}; do
             if nc -z localhost 8000; then
               echo "Gateway is ready!"
@@ -63,7 +55,6 @@ jobs:
             fi
             sleep 2
           done
-
           echo "Gateway started"
 
       - name: 🌐 Install Cloudflare Tunnel
@@ -87,7 +78,7 @@ jobs:
           echo "OpenClaw Agent Ready"
           echo "URL: $TUNNEL_URL"
           echo "Token: ${{ secrets.OPENCLAW_TOKEN }}"
-          echo "Model: minimax/minimax-m2.5 (via OpenRouter)"
+          echo "Model: minimax/minimax-m2.5 (via OpenRouter, select in UI)"
 
       - name: ⏱ Keep Alive
         run: |
