@@ -1,4 +1,4 @@
-name: 🦞 OpenClaw Cloud Agent (1h)
+name: 🦞 OpenClaw Cloud Agent (OpenRouter)
 
 on:
   workflow_dispatch:
@@ -18,12 +18,14 @@ jobs:
           node-version: 22
 
       - name: 🦞 Install OpenClaw
-        run: npm install -g openclaw@latest
+        run: |
+          npm install -g openclaw@latest
+          openclaw --version
 
       - name: ⚙️ Configure OpenClaw
         run: |
           mkdir -p ~/.openclaw
-          
+
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -34,11 +36,6 @@ jobs:
                 "allowedOrigins": ["*"],
                 "dangerouslyDisableDeviceAuth": true
               }
-            },
-            "model": {
-              "provider": "openai",
-              "model": "minimax/minimax-m2.5",
-              "baseUrl": "https://openrouter.ai/api/v1"
             }
           }
           EOF
@@ -46,6 +43,7 @@ jobs:
       - name: 🚀 Start OpenClaw Gateway
         env:
           OPENAI_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENAI_BASE_URL: https://openrouter.ai/api/v1
         run: |
           echo "Starting OpenClaw Gateway..."
 
@@ -55,7 +53,16 @@ jobs:
             > gateway.log 2>&1 &
 
           echo $! > gateway.pid
-          sleep 10
+
+          echo "Waiting for gateway..."
+
+          for i in {1..15}; do
+            if nc -z localhost 8000; then
+              echo "Gateway is ready!"
+              break
+            fi
+            sleep 2
+          done
 
           echo "Gateway started"
 
@@ -112,7 +119,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Token:** \`${{ secrets.OPENCLAW_TOKEN }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Model: minimax/minimax-m2.5 (via OpenRouter)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "⏱ Agent will run for **1 hour**." >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔍 Debug Logs
+        run: |
+          echo "===== Gateway Log ====="
+          cat gateway.log || true
 
       - name: ⏱ Keep Alive
         run: |
