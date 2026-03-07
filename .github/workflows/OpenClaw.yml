@@ -39,6 +39,9 @@ jobs:
               "auth": {
                 "token": "${{ secrets.OPENCLAW_TOKEN }}"
               },
+              "devicePairing": {
+                "enabled": false
+              },
               "controlUi": {
                 "allowedOrigins": ["*"]
               }
