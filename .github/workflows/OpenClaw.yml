@@ -22,14 +22,12 @@ jobs:
 
       - name: 🚀 Configure & Start OpenClaw Gateway (Background)
         env:
-          # 🔥 1. 換成 OpenRouter 的 API Key
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          # 🔥 2. 強制指定 Agent 預設使用的模型
-          OPENCLAW_MODEL: openrouter/minimax/minimax-m2.5
         run: |
-          mkdir -p ~/.openclaw
+          # 建立 Gateway 與 Agent 的設定檔目錄
+          mkdir -p ~/.openclaw/agents/main/agent
           
-          # 加入 dangerouslyDisableDeviceAuth 來強制關閉控制面板的裝置配對要求
+          # 1. Gateway 設定 (登入密碼與白名單)
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -44,7 +42,20 @@ jobs:
           }
           EOF
           
-          openclaw gateway run --port 8000 --allow-unconfigured &
+          # 2. 🔥 Agent 認證設定：直接把 OpenRouter 金鑰寫入它要求的檔案！
+          cat <<EOF > ~/.openclaw/agents/main/agent/auth-profiles.json
+          {
+            "openrouter": {
+              "apiKey": "${{ secrets.OPENROUTER_API_KEY }}"
+            },
+            "anthropic": {
+              "apiKey": "dummy-key-to-bypass-startup-check"
+            }
+          }
+          EOF
+          
+          # 3. 啟動 Gateway (強制指定預設模型為 minimax)
+          OPENCLAW_MODEL="openrouter/minimax/minimax-m2.5" openclaw gateway run --port 8000 --allow-unconfigured &
           sleep 5
 
       - name: 🌐 Install & Start Cloudflare Quick Tunnel
