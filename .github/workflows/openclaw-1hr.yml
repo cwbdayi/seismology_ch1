@@ -24,33 +24,29 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # 加上 --allow-unconfigured 讓 OpenClaw 在沒有初始設定檔的乾淨環境下也能順利啟動
           openclaw gateway run --port 8000 --allow-unconfigured &
           sleep 5
 
       - name: 🌐 Install & Start Cloudflare Quick Tunnel
         run: |
-          # 1. 下載並安裝官方 cloudflared
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           
-          # 2. 啟動免帳號的快速通道 (指向本機 8000 port)
           cloudflared tunnel --url http://localhost:8000 > tunnel.log 2>&1 &
-          
-          # 給它 10 秒鐘連線 Cloudflare 伺服器並生成網址
           sleep 10 
           
-          # 3. 從日誌中抓取 trycloudflare 的隨機網址
           export CF_URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
           
-          # 4. 輸出到 GitHub Actions 摘要面板
           echo "### 🦞 你的太空龍蝦已經上線！" >> $GITHUB_STEP_SUMMARY
           echo "🔗 **專屬連結:** $CF_URL" >> $GITHUB_STEP_SUMMARY
-          echo "⏳ **存活時間:** 60 分鐘" >> $GITHUB_STEP_SUMMARY
-          echo "💡 *請注意：此網址為 Cloudflare 免費隨機通道，1 小時後即失效。*" >> $GITHUB_STEP_SUMMARY
+          
+          # 🔥 終極絕招：直接印在黑底白字的 Log 裡面！🔥
+          echo "========================================="
+          echo "🚀 成功啦！請複製下方網址："
+          echo "👉 $CF_URL 👈"
+          echo "========================================="
 
       - name: ⏱️ Keep Alive for 1 Hour
         run: |
           echo "Agent 與 Cloudflare 穿透正在背景運行，倒數 59 分鐘後自動關閉..."
           sleep 3540
-          echo "打工時間結束，龍蝦下班！👋"
