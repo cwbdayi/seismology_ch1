@@ -1,4 +1,4 @@
-name: 🦞 OpenClaw 1-Hour Shift (Manual Auth Edition)
+name: 🦞 OpenClaw 1-Hour Shift (OpenRouter Auto-Auth Edition)
 
 on:
   workflow_dispatch: 
@@ -21,11 +21,13 @@ jobs:
         run: npm install -g openclaw@latest
 
       - name: 🚀 Configure & Start OpenClaw Gateway (Background)
+        env:
+          # 🔥 確保這裡有抓取你的 OpenRouter Secret
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          # 建立設定檔與大腦目錄
           mkdir -p ~/.openclaw/agents/main/agent
           
-          # 1. Gateway 登入與安全設定 (解決 CORS 與跳過裝置配對)
+          # 1. Gateway 登入與安全設定 (解決 CORS 與裝置配對)
           cat <<EOF > ~/.openclaw/openclaw.json
           {
             "gateway": {
@@ -40,14 +42,23 @@ jobs:
           }
           EOF
           
-          # 2. Agent 預設模型設定 (洗腦它預設使用 OpenRouter/MiniMax)
+          # 2. Agent 預設模型設定 (指定使用 MiniMax)
           cat <<EOF > ~/.openclaw/agents/main/agent/agent.json
           {
             "model": "openrouter/minimax/minimax-m2.5"
           }
           EOF
           
-          # 啟動 Gateway (不帶任何 API Key 環境變數，保持乾淨)
+          # 3. 🔥 直接把 OpenRouter 金鑰寫入它報錯的那個檔案裡！
+          cat <<EOF > ~/.openclaw/agents/main/agent/auth-profiles.json
+          {
+            "openrouter": {
+              "apiKey": "${{ secrets.OPENROUTER_API_KEY }}"
+            }
+          }
+          EOF
+          
+          # 啟動 Gateway
           openclaw gateway run --port 8000 --allow-unconfigured &
           sleep 5
 
